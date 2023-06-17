@@ -28,7 +28,11 @@ func main() {
 		Node:    parseNodeConfig(*nodeConfig),
 		Members: parseNodesConfig(*clusterConfig),
 	}
-	n := node.NewNode(c)
+	n, err := node.NewNode(c)
+	if err != nil {
+		panic(err)
+	}
+
 	if err := n.Start(); err != nil {
 		panic(err)
 	}
