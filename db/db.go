@@ -7,6 +7,12 @@ type DB struct {
 	hMap map[string][]byte
 }
 
+func NewDB() *DB {
+	return &DB{
+		hMap: make(map[string][]byte),
+	}
+}
+
 func (d *DB) Has(key string) bool {
 	d.mut.RLock()
 	_, ok := d.hMap[key]
