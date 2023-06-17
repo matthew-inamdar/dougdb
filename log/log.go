@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-const walPath = "/var/dougdb/%s/wal.log"
+const walPath = "/var/lib/dougdb/%s/wal.log"
 
 type Log struct {
 	entries []Entry
