@@ -16,5 +16,8 @@ func NewNode(config *Config) *Node {
 
 func (n *Node) Start() error {
 	// TODO: Implement.
+
+	// TODO: Attempt to recover from WAL if present.
+
 	return nil
 }
