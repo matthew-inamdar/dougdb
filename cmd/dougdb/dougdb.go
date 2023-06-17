@@ -47,6 +47,10 @@ func parseNodeConfig(config string) *node.Member {
 }
 
 func parseNodesConfig(configs string) []*node.Member {
+	if configs == "" {
+		return []*node.Member{}
+	}
+
 	c := strings.Split(configs, ";")
 	m := make([]*node.Member, 0, len(c))
 
