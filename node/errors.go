@@ -3,7 +3,7 @@ package node
 import "fmt"
 
 type RedirectToLeaderError struct {
-	LeaderMember *Member
+	LeaderMember *Server
 }
 
 func (e RedirectToLeaderError) Error() string {

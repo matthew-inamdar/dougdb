@@ -7,26 +7,35 @@ import (
 )
 
 type Node struct {
-	config      *Config
-	role        Role
-	db          *db.DB
+	config        *Config
+	role          Role
+	db            *db.DB
+	currentLeader *Server
+
+	// Persistent state.
 	currentTerm *store.Store
 	votedFor    *store.Store
 	log         *log.Log
+
+	// Volatile state.
+	commitIndex int
+	lastApplied int
+	nextIndex   map[*Server]int
+	matchIndex  map[*Server]int
 }
 
 func NewNode(config *Config) (*Node, error) {
-	curTerm, err := store.NewStore("current_term", config.Node.ID)
+	curTerm, err := store.NewStore("current_term", config.ThisServer.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	votedFor, err := store.NewStore("voted_for", config.Node.ID)
+	votedFor, err := store.NewStore("voted_for", config.ThisServer.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	l, err := log.NewLog(config.Node.ID)
+	l, err := log.NewLog(config.ThisServer.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +47,8 @@ func NewNode(config *Config) (*Node, error) {
 		currentTerm: curTerm,
 		votedFor:    votedFor,
 		log:         l,
+		nextIndex:   make(map[*Server]int),
+		matchIndex:  make(map[*Server]int),
 	}, nil
 }
 

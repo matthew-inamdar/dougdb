@@ -1,11 +1,21 @@
 package node
 
-type Member struct {
+type Server struct {
 	ID      string
 	Address string
 }
 
 type Config struct {
-	Node    *Member
-	Members []*Member
+	ThisServer *Server
+	Servers    []*Server
+}
+
+func (c *Config) FindServer(id string) *Server {
+	for _, m := range c.Servers {
+		if m.ID == id {
+			return m
+		}
+	}
+
+	return nil
 }

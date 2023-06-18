@@ -25,8 +25,8 @@ func main() {
 	}()
 
 	c := &node.Config{
-		Node:    parseNodeConfig(*nodeConfig),
-		Members: parseNodesConfig(*clusterConfig),
+		ThisServer: parseNodeConfig(*nodeConfig),
+		Servers:    parseNodesConfig(*clusterConfig),
 	}
 	n, err := node.NewNode(c)
 	if err != nil {
@@ -38,21 +38,21 @@ func main() {
 	}
 }
 
-func parseNodeConfig(config string) *node.Member {
+func parseNodeConfig(config string) *node.Server {
 	c := strings.Split(config, ",")
 	if len(c) != 2 {
 		log.Fatalf("invalid format for member %q", config)
 	}
-	return &node.Member{ID: c[0], Address: c[1]}
+	return &node.Server{ID: c[0], Address: c[1]}
 }
 
-func parseNodesConfig(configs string) []*node.Member {
+func parseNodesConfig(configs string) []*node.Server {
 	if configs == "" {
-		return []*node.Member{}
+		return []*node.Server{}
 	}
 
 	c := strings.Split(configs, ";")
-	m := make([]*node.Member, 0, len(c))
+	m := make([]*node.Server, 0, len(c))
 
 	for _, _c := range c {
 		m = append(m, parseNodeConfig(_c))

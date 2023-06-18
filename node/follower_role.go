@@ -17,18 +17,13 @@ func (r *FollowerRole) HandleRequestVoteRPC(rpc RequestVoteRPCRequest) (RequestV
 }
 
 func (r *FollowerRole) HandleExists(n *Node, key string) (bool, error) {
-	return false, RedirectToLeaderError{LeaderMember: n.config.}
+	return false, RedirectToLeaderError{LeaderMember: n.currentLeader}
 }
 
 func (r *FollowerRole) HandleGet(n *Node, key string) ([]byte, error) {
-	v, ok := n.db.Get(key)
-	if !ok {
-		return nil, nil
-	}
-	return v, nil
+	return nil, RedirectToLeaderError{LeaderMember: n.currentLeader}
 }
 
 func (r *FollowerRole) HandleSet(n *Node, key string, value []byte) error {
-	n.db.Set(key, value)
-	return nil
+	return RedirectToLeaderError{LeaderMember: n.currentLeader}
 }
