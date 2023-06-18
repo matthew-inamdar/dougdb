@@ -13,8 +13,8 @@ type Node struct {
 	currentLeader *Server
 
 	// Persistent state.
-	currentTerm *store.Store
-	votedFor    *store.Store
+	currentTerm *store.IntStore
+	votedFor    *store.IntStore
 	log         *log.Log
 
 	// Volatile state.
@@ -25,12 +25,12 @@ type Node struct {
 }
 
 func NewNode(config *Config) (*Node, error) {
-	curTerm, err := store.NewStore("current_term", config.ThisServer.ID)
+	curTerm, err := store.NewIntStore("current_term", config.ThisServer.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	votedFor, err := store.NewStore("voted_for", config.ThisServer.ID)
+	votedFor, err := store.NewIntStore("voted_for", config.ThisServer.ID)
 	if err != nil {
 		return nil, err
 	}
