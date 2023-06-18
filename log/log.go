@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bufio"
 	"github.com/matthew-inamdar/dougdb/filesystem"
 	"os"
 	"sync"
@@ -19,5 +20,15 @@ func NewLog(nodeID string) (*Log, error) {
 		return nil, err
 	}
 
-	return &Log{wal: f}, nil
+	l := &Log{wal: f}
+	l.hydrateEntries()
+
+	return l, nil
+}
+
+func (l *Log) hydrateEntries() {
+	scanner := bufio.NewScanner(l.wal)
+	for scanner.Scan() {
+		l.entries = append(l.entries, Entry{Bytes: scanner.Bytes()})
+	}
 }

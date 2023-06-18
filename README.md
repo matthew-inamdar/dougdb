@@ -7,3 +7,7 @@ DougDB is a distributed key-value store making use of the following technologies
 * Synchronous consistency and eventual consistency option (eventual consistency to allow reads from followers).
 
 This is not intended for production use, but as a fun exercise to learn and experiment.
+
+## Todo
+* Hydrating log from startup should apply committed entries to state machine.
+* Entries need to have defined structure and checksum to validate good writes.

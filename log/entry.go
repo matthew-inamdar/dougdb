@@ -1,6 +1,9 @@
 package log
 
-type Entry struct{}
+type Entry struct {
+	// TODO: Bytes is temporary.
+	Bytes []byte
+}
 
 // TODO: Checksum for command.
 // TODO: Command.
