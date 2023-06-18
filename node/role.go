@@ -29,8 +29,8 @@ type RequestVoteRPCResponse struct {
 }
 
 type Role interface {
-	HandleAppendEntriesRPC(rpc AppendEntriesRPCRequest) (AppendEntriesRPCResponse, error)
-	HandleRequestVoteRPC(rpc RequestVoteRPCRequest) (RequestVoteRPCResponse, error)
+	HandleAppendEntriesRPC(n *Node, rpc AppendEntriesRPCRequest) (AppendEntriesRPCResponse, error)
+	HandleRequestVoteRPC(n *Node, rpc RequestVoteRPCRequest) (RequestVoteRPCResponse, error)
 
 	HandleExists(n *Node, key string) (bool, error)    // TODO: Error to contain leader config for redirect.
 	HandleGet(n *Node, key string) ([]byte, error)     // TODO: Error to contain leader config for redirect.

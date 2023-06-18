@@ -11,3 +11,6 @@ This is not intended for production use, but as a fun exercise to learn and expe
 ## Todo
 * Hydrating log from startup should apply committed entries to state machine.
 * Entries need to have defined structure and checksum to validate good writes.
+
+## Future work
+* Cluster membership changes.

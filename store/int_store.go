@@ -3,7 +3,8 @@ package store
 import "encoding/binary"
 
 type IntStore struct {
-	s *Store
+	s     *Store
+	value int
 }
 
 func NewIntStore(name, nodeID string) (*IntStore, error) {
@@ -12,16 +13,24 @@ func NewIntStore(name, nodeID string) (*IntStore, error) {
 		return nil, err
 	}
 
-	return &IntStore{s: s}, nil
+	i := &IntStore{s: s}
+	b := s.Get()
+	i.value = int(binary.LittleEndian.Uint64(b))
+
+	return i, nil
 }
 
-func (s *IntStore) Get() uint64 {
-	b := s.s.Get()
-	return binary.LittleEndian.Uint64(b)
+func (s *IntStore) Get() int {
+	return s.value
 }
 
-func (s *IntStore) Set(value uint64) error {
+func (s *IntStore) Set(value int) error {
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, value)
-	return s.s.Set(b)
+	binary.LittleEndian.PutUint64(b, uint64(value))
+	if err := s.s.Set(b); err != nil {
+		return err
+	}
+
+	s.value = value
+	return nil
 }
