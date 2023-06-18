@@ -11,7 +11,7 @@ import (
 type Store struct {
 	value []byte
 
-	mut sync.RWMutex
+	mut sync.Mutex
 	f   *os.File
 }
 
@@ -34,6 +34,9 @@ func (s *Store) Get() []byte {
 }
 
 func (s *Store) Set(value []byte) error {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+
 	if err := s.f.Truncate(0); err != nil {
 		return err
 	}
