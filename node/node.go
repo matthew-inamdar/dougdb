@@ -3,12 +3,11 @@ package node
 import (
 	"github.com/matthew-inamdar/dougdb/db"
 	"github.com/matthew-inamdar/dougdb/log"
-	"github.com/matthew-inamdar/dougdb/state"
 )
 
 type Node struct {
 	config *Config
-	state  state.State
+	role   Role
 	db     *db.DB
 	log    *log.Log
 }
@@ -21,8 +20,8 @@ func NewNode(config *Config) (*Node, error) {
 
 	return &Node{
 		config: config,
-		state:  &state.FollowerState{},
 		db:     db.NewDB(),
+		role:   &FollowerRole{},
 		log:    l,
 	}, nil
 }
@@ -32,6 +31,7 @@ func (n *Node) Start() error {
 
 	// TODO: Attempt to recover from WAL if present.
 	// TODO: Listen for RPC requests.
+	// TODO: Listen for client requests.
 
 	return nil
 }

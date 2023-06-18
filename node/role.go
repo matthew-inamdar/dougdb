@@ -1,4 +1,4 @@
-package state
+package node
 
 type Entry = string
 
@@ -28,7 +28,11 @@ type RequestVoteRPCResponse struct {
 	VoteGranted bool
 }
 
-type State interface {
+type Role interface {
 	HandleAppendEntriesRPC(rpc AppendEntriesRPCRequest) (AppendEntriesRPCResponse, error)
 	HandleRequestVoteRPC(rpc RequestVoteRPCRequest) (RequestVoteRPCResponse, error)
+
+	HandleExists(n *Node, key string) (bool, error)    // TODO: Error to contain leader config for redirect.
+	HandleGet(n *Node, key string) ([]byte, error)     // TODO: Error to contain leader config for redirect.
+	HandleSet(n *Node, key string, value []byte) error // TODO: Error to contain leader config for redirect.
 }
