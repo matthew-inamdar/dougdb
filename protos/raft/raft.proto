@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/matthew-inamdar/dougdb/grpc";
+option go_package = "github.com/matthew-inamdar/dougdb/gen/grpc/raft";
 
 service Raft {
   rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);

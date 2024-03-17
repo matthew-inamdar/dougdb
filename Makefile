@@ -19,6 +19,6 @@ test: ## run tests
 
 .PHONY: protos
 protos: ## compile protobuf
-	protoc --go_out=./gen --go_opt=paths=source_relative \
-		--go-grpc_out=./gen --go-grpc_opt=paths=source_relative \
-        --proto_path=protos raft/raft.proto
+	protoc --go_out=./gen/grpc --go_opt=paths=source_relative \
+		--go-grpc_out=./gen/grpc --go-grpc_opt=paths=source_relative \
+        --proto_path=protos raft/raft.proto doug/doug.proto
