@@ -1,63 +1,27 @@
 package node
 
-import (
-	"github.com/matthew-inamdar/dougdb/db"
-	"github.com/matthew-inamdar/dougdb/log"
-	"github.com/matthew-inamdar/dougdb/store"
+type Role int
+
+const (
+	RoleFollower Role = iota
+	RoleCandidate
+	RoleLeader
 )
 
-type Node struct {
-	config        *Config
-	role          Role
-	db            *db.DB
-	currentLeader *Server
+type ID string
 
+type Node struct {
 	// Persistent state.
-	currentTerm *store.IntStore
-	votedFor    *store.IntStore
-	log         *log.Log
+	role        Role
+	currentTerm uint64
+	votedFor    ID
+	log         []Entry
 
 	// Volatile state.
-	commitIndex int
-	lastApplied int
-	nextIndex   map[*Server]int
-	matchIndex  map[*Server]int
-}
+	commitIndex uint64
+	lastApplied uint64
 
-func NewNode(config *Config) (*Node, error) {
-	curTerm, err := store.NewIntStore("current_term", config.ThisServer.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	votedFor, err := store.NewIntStore("voted_for", config.ThisServer.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	l, err := log.NewLog(config.ThisServer.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Node{
-		config:      config,
-		db:          db.NewDB(),
-		role:        &FollowerRole{},
-		currentTerm: curTerm,
-		votedFor:    votedFor,
-		log:         l,
-		nextIndex:   make(map[*Server]int),
-		matchIndex:  make(map[*Server]int),
-	}, nil
-}
-
-func (n *Node) Start() error {
-	// TODO: Implement.
-
-	// TODO: Attempt to recover from WAL if present.
-	// TODO: Listen for RPC requests.
-	// TODO: Listen for client requests.
-
-	return nil
+	// Volatile leader state.
+	nextIndex  map[ID]uint64
+	matchIndex map[ID]uint64
 }

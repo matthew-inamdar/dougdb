@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option go_package = "github.com/matthew-inamdar/dougdb/grpc";
+
+service Raft {
+  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+  rpc RequestVote(RequestVoteRequest) returns (RequestVoteResponse);
+}
+
+message AppendEntriesRequest {
+  message Entry {
+    enum Operation {
+      OPERATION_UNSPECIFIED = 0;
+      OPERATION_PUT = 1;
+      OPERATION_DELETE = 2;
+    }
+
+    uint64 term = 1;
+    Operation operation = 2;
+    string id = 3;
+    optional bytes value = 4;
+  }
+
+  uint64 term = 1;
+  string leaderID = 2;
+  uint64 prevLogTerm = 3;
+  repeated Entry entries = 4;
+  uint64 leaderCommit = 5;
+}
+
+message AppendEntriesResponse {
+  uint64 term = 1;
+  bool success = 2;
+}
+
+message RequestVoteRequest {
+  uint64 term = 1;
+  string candidateID = 2;
+  uint64 lastLogIndex = 3;
+  uint64 lastLogTerm = 4;
+}
+
+message RequestVoteResponse {
+  uint64 term = 1;
+  bool voteGranted = 2;
+}
