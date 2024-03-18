@@ -39,7 +39,7 @@ type Node struct {
 	volatileLeaderState
 
 	// DB state.
-	dbState state
+	DBState state
 }
 
 func NewNode(id ID) *Node {
@@ -50,6 +50,6 @@ func NewNode(id ID) *Node {
 			nextIndex:  make(map[ID]uint64),
 			matchIndex: make(map[ID]uint64),
 		},
-		dbState: newMemoryState(),
+		DBState: newMemoryState(),
 	}
 }

@@ -6,9 +6,9 @@ import (
 )
 
 type state interface {
-	get(ctx context.Context, key []byte) (error, []byte)
-	put(ctx context.Context, key, value []byte) error
-	delete(ctx context.Context, key []byte) error
+	Get(ctx context.Context, key []byte) ([]byte, error)
+	Put(ctx context.Context, key, value []byte) error
+	Delete(ctx context.Context, key []byte) error
 }
 
 type memoryState struct {
@@ -23,20 +23,20 @@ func newMemoryState() *memoryState {
 	}
 }
 
-func (s *memoryState) get(ctx context.Context, key []byte) (error, []byte) {
+func (s *memoryState) Get(ctx context.Context, key []byte) ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err(), nil
+		return nil, ctx.Err()
 	default:
 	}
 
-	return nil, s.state[string(key)]
+	return s.state[string(key)], nil
 }
 
-func (s *memoryState) put(ctx context.Context, key, value []byte) error {
+func (s *memoryState) Put(ctx context.Context, key, value []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -51,7 +51,7 @@ func (s *memoryState) put(ctx context.Context, key, value []byte) error {
 	return nil
 }
 
-func (s *memoryState) delete(ctx context.Context, key []byte) error {
+func (s *memoryState) Delete(ctx context.Context, key []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
