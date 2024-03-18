@@ -63,7 +63,7 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 			Key:       e.GetKey(),
 			Value:     e.GetValue(),
 		}
-		err = s.node.AddEntry(uint64(i)+req.GetPrevLogIndex(), entry)
+		err = s.node.AddEntry(uint64(i+1)+req.GetPrevLogIndex(), entry)
 	}
 
 	// TODO: Update commitIndex and apply committed entries to the state machine.
