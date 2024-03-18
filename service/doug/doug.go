@@ -10,11 +10,11 @@ import (
 type Service struct {
 	douggrpc.UnimplementedDougServer
 
-	node *node.Node
+	dbState node.State
 }
 
 func (s *Service) Get(ctx context.Context, req *douggrpc.GetRequest) (*douggrpc.GetResponse, error) {
-	v, err := s.node.DBState.Get(ctx, req.GetKey())
+	v, err := s.dbState.Get(ctx, req.GetKey())
 	if err != nil {
 		// TODO: gRPC error response
 		return nil, err
@@ -25,7 +25,7 @@ func (s *Service) Get(ctx context.Context, req *douggrpc.GetRequest) (*douggrpc.
 }
 
 func (s *Service) Put(ctx context.Context, req *douggrpc.PutRequest) (*douggrpc.PutResponse, error) {
-	err := s.node.DBState.Put(ctx, req.GetKey(), req.GetValue())
+	err := s.dbState.Put(ctx, req.GetKey(), req.GetValue())
 	if err != nil {
 		// TODO: gRPC error response
 		return nil, err
@@ -34,7 +34,7 @@ func (s *Service) Put(ctx context.Context, req *douggrpc.PutRequest) (*douggrpc.
 }
 
 func (s *Service) Delete(ctx context.Context, req *douggrpc.DeleteRequest) (*douggrpc.DeleteResponse, error) {
-	err := s.node.DBState.Delete(ctx, req.GetKey())
+	err := s.dbState.Delete(ctx, req.GetKey())
 	if err != nil {
 		// TODO: gRPC error response
 		return nil, err

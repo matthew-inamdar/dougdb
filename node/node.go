@@ -32,14 +32,14 @@ type volatileLeaderState struct {
 type Node struct {
 	id ID
 
-	// Raft state.
+	// Raft State.
 	mu sync.Mutex
 	persistentState
 	volatileState
 	volatileLeaderState
 
-	// DB state.
-	DBState state
+	// DB State.
+	DBState State
 }
 
 func NewNode(id ID) *Node {

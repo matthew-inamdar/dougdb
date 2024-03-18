@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type state interface {
+type State interface {
 	Get(ctx context.Context, key []byte) ([]byte, error)
 	Put(ctx context.Context, key, value []byte) error
 	Delete(ctx context.Context, key []byte) error
@@ -66,4 +66,4 @@ func (s *memoryState) Delete(ctx context.Context, key []byte) error {
 	return nil
 }
 
-var _ state = (*memoryState)(nil)
+var _ State = (*memoryState)(nil)
