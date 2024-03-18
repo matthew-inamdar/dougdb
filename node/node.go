@@ -6,12 +6,12 @@ import (
 	"sync"
 )
 
-type role int
+type Role int
 
 const (
-	roleFollower role = iota
-	roleCandidate
-	roleLeader
+	RoleFollower Role = iota
+	RoleCandidate
+	RoleLeader
 )
 
 var (
@@ -21,7 +21,7 @@ var (
 type ID string
 
 type persistentState struct {
-	role        role
+	role        Role
 	currentTerm uint64
 	votedFor    ID
 	log         []Entry
@@ -88,8 +88,8 @@ func (n *Node) AddEntry(index uint64, entry Entry) error {
 	return nil
 }
 
-func (n *Node) CommitIndex() uint64 {
-	return n.commitIndex
+func (n *Node) LastApplied() uint64 {
+	return n.lastApplied
 }
 
 func (n *Node) Commit(ctx context.Context, index uint64) error {
@@ -113,6 +113,24 @@ func (n *Node) Commit(ctx context.Context, index uint64) error {
 		panic("the operation is unsupported")
 	}
 
-	n.commitIndex = index
+	n.lastApplied = index
 	return nil
+}
+
+func (n *Node) SetCurrentTerm(term uint64) {
+	n.currentTerm = term
+}
+
+func (n *Node) ConditionallySetCommitIndex(leaderCommit uint64) {
+	if leaderCommit > n.commitIndex {
+		n.commitIndex = leaderCommit
+	}
+}
+
+func (n *Node) Role() Role {
+	return n.role
+}
+
+func (n *Node) SetRole(role Role) {
+	n.role = role
 }

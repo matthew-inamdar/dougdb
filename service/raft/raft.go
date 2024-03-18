@@ -30,13 +30,21 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 	}
 
 	// Check if leader's term is less than the current term.
-	ct := s.node.CurrentTerm()
-
-	if req.GetTerm() < ct {
+	if req.GetTerm() < s.node.CurrentTerm() {
 		return &raftgrpc.AppendEntriesResponse{
-			Term:    ct,
+			Term:    s.node.CurrentTerm(),
 			Success: false,
 		}, nil
+	}
+
+	// If leader's term is greater, then update to match.
+	if req.GetTerm() > s.node.CurrentTerm() {
+		s.node.SetCurrentTerm(req.GetTerm())
+
+		// If currently leader then convert to follower.
+		if s.node.Role() == node.RoleLeader {
+			s.node.SetRole(node.RoleFollower)
+		}
 	}
 
 	// Check if the log doesn't contain an entry at the prevLogIndex with the
@@ -44,7 +52,7 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 	if !s.node.HasEntry(req.GetPrevLogIndex(), req.GetPrevLogTerm()) {
 		// TODO: What happens here???
 		return &raftgrpc.AppendEntriesResponse{
-			Term:    ct,
+			Term:    s.node.CurrentTerm(),
 			Success: false,
 		}, nil
 	}
@@ -64,8 +72,8 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 		}
 	}
 
-	// Update commitIndex and apply committed entries to the state machine.
-	for i := s.node.CommitIndex(); i < req.GetLeaderCommit(); i++ {
+	// Apply committed entries to the state machine.
+	for i := s.node.LastApplied() + 1; i <= req.GetLeaderCommit(); i++ {
 		err := s.node.Commit(ctx, i)
 		if err != nil {
 			// TODO: Return gRPC error.
@@ -73,8 +81,11 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 		}
 	}
 
+	// Update commitIndex.
+	s.node.ConditionallySetCommitIndex(req.GetLeaderCommit())
+
 	return &raftgrpc.AppendEntriesResponse{
-		Term:    ct,
+		Term:    s.node.CurrentTerm(),
 		Success: true,
 	}, nil
 }
