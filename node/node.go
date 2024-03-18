@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -10,6 +11,10 @@ const (
 	roleFollower role = iota
 	roleCandidate
 	roleLeader
+)
+
+var (
+	ErrEntryIndexOutOfRange = errors.New("the index of the entry is out of range")
 )
 
 type ID string
@@ -66,4 +71,18 @@ func (n *Node) HasEntry(index, term uint64) bool {
 	}
 
 	return n.log[index].Term == term
+}
+
+func (n *Node) AddEntry(index uint64, entry Entry) error {
+	if index > uint64(len(n.log)) {
+		return ErrEntryIndexOutOfRange
+	}
+
+	if index == uint64(len(n.log)) {
+		n.log = append(n.log, entry)
+		return nil
+	}
+
+	n.log[index] = entry
+	return nil
 }

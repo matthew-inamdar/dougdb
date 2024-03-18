@@ -2,9 +2,14 @@ package raft
 
 import (
 	"context"
+	"errors"
 
 	raftgrpc "github.com/matthew-inamdar/dougdb/gen/grpc/raft"
 	"github.com/matthew-inamdar/dougdb/node"
+)
+
+var (
+	ErrUnsupportedOperation = errors.New("the operation is unsupported")
 )
 
 type Service struct {
@@ -44,12 +49,29 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 		}, nil
 	}
 
-	// TODO: Replace and append entries starting from the prevLogIndex+1.
+	// Replace and append entries starting from the prevLogIndex+1.
+	for i, e := range req.GetEntries() {
+		op, err := mapRPCOperation(e.GetOperation())
+		if err != nil {
+			// TODO: Return gRPC error.
+			return nil, err
+		}
+
+		entry := node.Entry{
+			Term:      e.GetTerm(),
+			Operation: op,
+			Key:       e.GetKey(),
+			Value:     e.GetValue(),
+		}
+		err = s.node.AddEntry(uint64(i)+req.GetPrevLogIndex(), entry)
+	}
 
 	// TODO: Update commitIndex and apply committed entries to the state machine.
 
-	// TODO
-	return nil, nil
+	return &raftgrpc.AppendEntriesResponse{
+		Term:    ct,
+		Success: true,
+	}, nil
 }
 
 func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequest) (*raftgrpc.RequestVoteResponse, error) {
@@ -58,3 +80,14 @@ func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequ
 }
 
 var _ raftgrpc.RaftServer = (*Service)(nil)
+
+func mapRPCOperation(operation raftgrpc.AppendEntriesRequest_Entry_Operation) (node.Operation, error) {
+	switch operation {
+	case raftgrpc.AppendEntriesRequest_Entry_OPERATION_PUT:
+		return node.OperationPut, nil
+	case raftgrpc.AppendEntriesRequest_Entry_OPERATION_DELETE:
+		return node.OperationDelete, nil
+	default:
+		return 0, ErrUnsupportedOperation
+	}
+}
