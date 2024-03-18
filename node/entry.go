@@ -1,15 +1,15 @@
 package node
 
-type operation int
+type Operation int
 
 const (
-	operationPut operation = iota
-	operationDelete
+	OperationPut Operation = iota
+	OperationDelete
 )
 
 type Entry struct {
-	term      uint64
-	operation operation
-	key       []byte
-	value     []byte
+	Term      uint64
+	Operation Operation
+	Key       []byte
+	Value     []byte
 }

@@ -1,6 +1,8 @@
 package node
 
-import "sync"
+import (
+	"sync"
+)
 
 type role int
 
@@ -33,7 +35,7 @@ type Node struct {
 	id ID
 
 	// Raft State.
-	mu sync.Mutex
+	sync.Mutex
 	persistentState
 	volatileState
 	volatileLeaderState
@@ -44,12 +46,24 @@ type Node struct {
 
 func NewNode(id ID) *Node {
 	return &Node{
-		id: id,
-		mu: sync.Mutex{},
+		id:    id,
+		Mutex: sync.Mutex{},
 		volatileLeaderState: volatileLeaderState{
 			nextIndex:  make(map[ID]uint64),
 			matchIndex: make(map[ID]uint64),
 		},
 		DBState: newMemoryState(),
 	}
+}
+
+func (n *Node) CurrentTerm() uint64 {
+	return n.persistentState.currentTerm
+}
+
+func (n *Node) HasEntry(index, term uint64) bool {
+	if index >= uint64(len(n.log)) {
+		return false
+	}
+
+	return n.log[index].Term == term
 }

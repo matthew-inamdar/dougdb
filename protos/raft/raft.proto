@@ -23,9 +23,10 @@ message AppendEntriesRequest {
 
   uint64 term = 1;
   string leaderID = 2;
-  uint64 prevLogTerm = 3;
-  repeated Entry entries = 4;
-  uint64 leaderCommit = 5;
+  uint64 prevLogIndex = 3;
+  uint64 prevLogTerm = 4;
+  repeated Entry entries = 5;
+  uint64 leaderCommit = 6;
 }
 
 message AppendEntriesResponse {
