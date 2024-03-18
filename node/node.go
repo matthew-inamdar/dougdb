@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"errors"
 	"sync"
 )
@@ -84,5 +85,34 @@ func (n *Node) AddEntry(index uint64, entry Entry) error {
 	}
 
 	n.log[index] = entry
+	return nil
+}
+
+func (n *Node) CommitIndex() uint64 {
+	return n.commitIndex
+}
+
+func (n *Node) Commit(ctx context.Context, index uint64) error {
+	if index >= uint64(len(n.log)) {
+		return ErrEntryIndexOutOfRange
+	}
+
+	switch n.log[index].Operation {
+	case OperationPut:
+		err := n.DBState.Put(ctx, n.log[index].Key, n.log[index].Value)
+		if err != nil {
+			return err
+		}
+	case OperationDelete:
+		err := n.DBState.Delete(ctx, n.log[index].Key)
+		if err != nil {
+			return err
+		}
+	default:
+		// We should logically never arrive here.
+		panic("the operation is unsupported")
+	}
+
+	n.commitIndex = index
 	return nil
 }

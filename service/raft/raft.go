@@ -51,22 +51,27 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 
 	// Replace and append entries starting from the prevLogIndex+1.
 	for i, e := range req.GetEntries() {
-		op, err := mapRPCOperation(e.GetOperation())
+		entry := node.Entry{
+			Term:      e.GetTerm(),
+			Operation: mapRPCOperation(e.GetOperation()),
+			Key:       e.GetKey(),
+			Value:     e.GetValue(),
+		}
+		err := s.node.AddEntry(uint64(i+1)+req.GetPrevLogIndex(), entry)
 		if err != nil {
 			// TODO: Return gRPC error.
 			return nil, err
 		}
-
-		entry := node.Entry{
-			Term:      e.GetTerm(),
-			Operation: op,
-			Key:       e.GetKey(),
-			Value:     e.GetValue(),
-		}
-		err = s.node.AddEntry(uint64(i+1)+req.GetPrevLogIndex(), entry)
 	}
 
-	// TODO: Update commitIndex and apply committed entries to the state machine.
+	// Update commitIndex and apply committed entries to the state machine.
+	for i := s.node.CommitIndex(); i < req.GetLeaderCommit(); i++ {
+		err := s.node.Commit(ctx, i)
+		if err != nil {
+			// TODO: Return gRPC error.
+			return nil, err
+		}
+	}
 
 	return &raftgrpc.AppendEntriesResponse{
 		Term:    ct,
@@ -81,13 +86,14 @@ func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequ
 
 var _ raftgrpc.RaftServer = (*Service)(nil)
 
-func mapRPCOperation(operation raftgrpc.AppendEntriesRequest_Entry_Operation) (node.Operation, error) {
+func mapRPCOperation(operation raftgrpc.AppendEntriesRequest_Entry_Operation) node.Operation {
 	switch operation {
 	case raftgrpc.AppendEntriesRequest_Entry_OPERATION_PUT:
-		return node.OperationPut, nil
+		return node.OperationPut
 	case raftgrpc.AppendEntriesRequest_Entry_OPERATION_DELETE:
-		return node.OperationDelete, nil
+		return node.OperationDelete
 	default:
-		return 0, ErrUnsupportedOperation
+		// We should logically never arrive here.
+		panic("the operation is unsupported")
 	}
 }
