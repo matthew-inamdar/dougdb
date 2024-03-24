@@ -41,28 +41,37 @@ type volatileLeaderState struct {
 }
 
 type Node struct {
-	id ID
+	id       ID
+	leaderID ID
 
 	// Raft State.
-	sync.Mutex
+	sync.RWMutex
 	persistentState
 	volatileState
 	volatileLeaderState
 
 	// DB State.
-	DBState State
+	dbState State
 }
 
 func NewNode(id ID) *Node {
 	return &Node{
-		id:    id,
-		Mutex: sync.Mutex{},
+		id:      id,
+		RWMutex: sync.RWMutex{},
 		volatileLeaderState: volatileLeaderState{
 			nextIndex:  make(map[ID]uint64),
 			matchIndex: make(map[ID]uint64),
 		},
-		DBState: newMemoryState(),
+		dbState: newMemoryState(),
 	}
+}
+
+func (n *Node) LeaderID() ID {
+	return n.leaderID
+}
+
+func (n *Node) SetLeaderID(leaderID ID) {
+	n.leaderID = leaderID
 }
 
 func (n *Node) CurrentTerm() uint64 {
@@ -94,6 +103,10 @@ func (n *Node) AddEntry(index uint64, entry Entry) error {
 	return nil
 }
 
+func (n *Node) AppendEntry(entry Entry) error {
+	return n.AddEntry(uint64(len(n.log)), entry)
+}
+
 func (n *Node) LastApplied() uint64 {
 	return n.lastApplied
 }
@@ -105,12 +118,12 @@ func (n *Node) Commit(ctx context.Context, index uint64) error {
 
 	switch n.log[index].Operation {
 	case OperationPut:
-		err := n.DBState.Put(ctx, n.log[index].Key, n.log[index].Value)
+		err := n.dbState.Put(ctx, n.log[index].Key, n.log[index].Value)
 		if err != nil {
 			return err
 		}
 	case OperationDelete:
-		err := n.DBState.Delete(ctx, n.log[index].Key)
+		err := n.dbState.Delete(ctx, n.log[index].Key)
 		if err != nil {
 			return err
 		}
@@ -145,4 +158,20 @@ func (n *Node) SetRole(role Role) {
 
 func (n *Node) VotedFor() ID {
 	return n.votedFor
+}
+
+func (n *Node) DBState() State {
+	return n.dbState
+}
+
+func (n *Node) LastLogTerm() uint64 {
+	if len(n.log) == 0 {
+		return 0
+	}
+
+	return n.log[len(n.log)-1].Term
+}
+
+func (n *Node) LastLogIndex() uint64 {
+	return uint64(len(n.log)) - 1
 }

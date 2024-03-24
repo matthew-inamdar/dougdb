@@ -36,4 +36,6 @@ This is not intended for production use, but as a fun exercise to learn and expe
 * Election timeouts are randomised to mitigate split brain elections
 * Candidates and followers both have election timeouts (also used for missed heartbeats)
 * We'll use 150-300ms as the election timeout random bounds
+* When a candidate becomes leader, it initialises all `nextIndex` values to the
+index after the latest entry in the new leader's log
 * 

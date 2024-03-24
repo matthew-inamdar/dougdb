@@ -39,15 +39,20 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 		}, nil
 	}
 
-	// If leader's term is greater or equal, then update to match and convert to
-	// follower (if not already).
-	if req.GetTerm() >= s.node.CurrentTerm() {
-		if req.GetTerm() > s.node.CurrentTerm() {
-			s.node.SetCurrentTerm(req.GetTerm())
-		}
-		if s.node.Role() != node.RoleFollower {
-			s.node.SetRole(node.RoleFollower)
-		}
+	// If the leader's term is greater than the current term, then update
+	// internal state.
+	if req.GetTerm() > s.node.CurrentTerm() {
+		s.node.SetCurrentTerm(req.GetTerm())
+	}
+
+	// If this node isn't a follower, then convert to follower.
+	if s.node.Role() != node.RoleFollower {
+		s.node.SetRole(node.RoleFollower)
+	}
+
+	// If this is a new leader, then update internal state.
+	if leaderID := node.ID(req.GetLeaderID()); s.node.LeaderID() != leaderID {
+		s.node.SetLeaderID(leaderID)
 	}
 
 	// Check if the log doesn't contain an entry at the prevLogIndex with the
@@ -116,18 +121,28 @@ func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequ
 		}, nil
 	}
 
-	// If leader's term is greater or equal, then update to match and convert to
-	// follower (if not already).
-	if req.GetTerm() >= s.node.CurrentTerm() {
-		if req.GetTerm() > s.node.CurrentTerm() {
-			s.node.SetCurrentTerm(req.GetTerm())
-		}
-		if s.node.Role() != node.RoleFollower {
-			s.node.SetRole(node.RoleFollower)
-		}
+	// If the leader's term is greater than the current term, then update
+	// internal state.
+	if req.GetTerm() > s.node.CurrentTerm() {
+		s.node.SetCurrentTerm(req.GetTerm())
 	}
 
-	// If candidate has already voted, then do not grant vote.
+	// If this node isn't a follower, then convert to follower.
+	if s.node.Role() != node.RoleFollower {
+		s.node.SetRole(node.RoleFollower)
+	}
+
+	// If the candidate has already been granted the vote for the current term,
+	// then idempotently grant again.
+	if node.ID(req.GetCandidateID()) == s.node.VotedFor() {
+		return &raftgrpc.RequestVoteResponse{
+			Term:        s.node.CurrentTerm(),
+			VoteGranted: true,
+		}, nil
+	}
+
+	// If vote has already been granted for current term, then do not grant
+	// another vote.
 	if s.node.VotedFor() != node.NilID {
 		return &raftgrpc.RequestVoteResponse{
 			Term:        s.node.CurrentTerm(),
@@ -135,11 +150,29 @@ func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequ
 		}, nil
 	}
 
-	// TODO: If votedFor is null or candidateID, and candidate's log is at least
-	// TODO: as up-to-date as receiver's log, grant vote (§5.2, §5.4)
+	// If current node has larger term in last log entry, then do not grant
+	// vote.
+	if req.GetLastLogTerm() < s.node.LastLogTerm() {
+		return &raftgrpc.RequestVoteResponse{
+			Term:        s.node.CurrentTerm(),
+			VoteGranted: false,
+		}, nil
+	}
 
-	// TODO
-	return nil, nil
+	// If current node has same term in last log entry, and current node has
+	// more entries (higher index), then do not grant vote.
+	if req.GetLastLogTerm() == s.node.LastLogTerm() && req.GetLastLogIndex() < s.node.LastLogIndex() {
+		return &raftgrpc.RequestVoteResponse{
+			Term:        s.node.CurrentTerm(),
+			VoteGranted: false,
+		}, nil
+	}
+
+	// Candidate is suitable for leadership, so grant vote.
+	return &raftgrpc.RequestVoteResponse{
+		Term:        s.node.CurrentTerm(),
+		VoteGranted: true,
+	}, nil
 }
 
 var _ raftgrpc.RaftServer = (*Service)(nil)
