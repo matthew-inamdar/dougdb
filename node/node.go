@@ -21,6 +21,8 @@ var (
 
 type ID string
 
+const NilID ID = ""
+
 type persistentState struct {
 	role        Role
 	currentTerm uint64
@@ -76,16 +78,19 @@ func (n *Node) HasEntry(index, term uint64) bool {
 }
 
 func (n *Node) AddEntry(index uint64, entry Entry) error {
+	// Node is missing prior entries.
 	if index > uint64(len(n.log)) {
 		return ErrEntryIndexOutOfRange
 	}
 
-	if index == uint64(len(n.log)) {
-		n.log = append(n.log, entry)
-		return nil
-	}
+	// Needs to overwrite prior entries so remove entries from log up to and
+	// excluding new entry index.
+	log := make([]Entry, index)
+	copy(log, n.log)
+	n.log = log
 
-	n.log[index] = entry
+	// Next entry node is expecting.
+	n.log = append(n.log, entry)
 	return nil
 }
 
@@ -119,6 +124,9 @@ func (n *Node) Commit(ctx context.Context, index uint64) error {
 
 func (n *Node) SetCurrentTerm(term uint64) {
 	n.currentTerm = term
+
+	// Voted-for must be cleared when the term is changed.
+	n.votedFor = NilID
 }
 
 func (n *Node) ConditionallySetCommitIndex(leaderCommit uint64) {
@@ -133,4 +141,8 @@ func (n *Node) Role() Role {
 
 func (n *Node) SetRole(role Role) {
 	n.role = role
+}
+
+func (n *Node) VotedFor() ID {
+	return n.votedFor
 }

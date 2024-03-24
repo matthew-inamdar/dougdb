@@ -31,7 +31,7 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 	default:
 	}
 
-	// Check if leader's term is less than the current term.
+	// Check if leader's term is less than the current term (stale term).
 	if req.GetTerm() < s.node.CurrentTerm() {
 		return &raftgrpc.AppendEntriesResponse{
 			Term:    s.node.CurrentTerm(),
@@ -39,12 +39,13 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 		}, nil
 	}
 
-	// If leader's term is greater, then update to match.
-	if req.GetTerm() > s.node.CurrentTerm() {
-		s.node.SetCurrentTerm(req.GetTerm())
-
-		// If currently leader then convert to follower.
-		if s.node.Role() == node.RoleLeader {
+	// If leader's term is greater or equal, then update to match and convert to
+	// follower (if not already).
+	if req.GetTerm() >= s.node.CurrentTerm() {
+		if req.GetTerm() > s.node.CurrentTerm() {
+			s.node.SetCurrentTerm(req.GetTerm())
+		}
+		if s.node.Role() != node.RoleFollower {
 			s.node.SetRole(node.RoleFollower)
 		}
 	}
@@ -107,8 +108,27 @@ func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequ
 	default:
 	}
 
-	// Check if candidate's term is less than current term.
+	// Check if candidate's term is less than current term (stale term).
 	if req.GetTerm() < s.node.CurrentTerm() {
+		return &raftgrpc.RequestVoteResponse{
+			Term:        s.node.CurrentTerm(),
+			VoteGranted: false,
+		}, nil
+	}
+
+	// If leader's term is greater or equal, then update to match and convert to
+	// follower (if not already).
+	if req.GetTerm() >= s.node.CurrentTerm() {
+		if req.GetTerm() > s.node.CurrentTerm() {
+			s.node.SetCurrentTerm(req.GetTerm())
+		}
+		if s.node.Role() != node.RoleFollower {
+			s.node.SetRole(node.RoleFollower)
+		}
+	}
+
+	// If candidate has already voted, then do not grant vote.
+	if s.node.VotedFor() != node.NilID {
 		return &raftgrpc.RequestVoteResponse{
 			Term:        s.node.CurrentTerm(),
 			VoteGranted: false,

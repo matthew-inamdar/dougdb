@@ -2,6 +2,11 @@ syntax = "proto3";
 
 option go_package = "github.com/matthew-inamdar/dougdb/gen/grpc/doug";
 
+message ErrorDetails {
+  bool isLeader = 1;
+  string leaderID = 2;
+}
+
 service Doug {
   rpc Get(GetRequest) returns (GetResponse);
   rpc Put(PutRequest) returns (PutResponse);
