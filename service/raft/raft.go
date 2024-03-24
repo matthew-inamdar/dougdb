@@ -3,6 +3,8 @@ package raft
 import (
 	"context"
 	"errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	raftgrpc "github.com/matthew-inamdar/dougdb/gen/grpc/raft"
 	"github.com/matthew-inamdar/dougdb/node"
@@ -50,7 +52,7 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 	// Check if the log doesn't contain an entry at the prevLogIndex with the
 	// same term as the prevLogTerm.
 	if !s.node.HasEntry(req.GetPrevLogIndex(), req.GetPrevLogTerm()) {
-		// TODO: What happens here???
+		// The leader should retry with prevLogIndex-1.
 		return &raftgrpc.AppendEntriesResponse{
 			Term:    s.node.CurrentTerm(),
 			Success: false,
@@ -59,16 +61,21 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 
 	// Replace and append entries starting from the prevLogIndex+1.
 	for i, e := range req.GetEntries() {
+		op, err := mapRPCOperation(e.GetOperation())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "operation %d not supported", op)
+		}
+
 		entry := node.Entry{
 			Term:      e.GetTerm(),
-			Operation: mapRPCOperation(e.GetOperation()),
+			Operation: op,
 			Key:       e.GetKey(),
 			Value:     e.GetValue(),
 		}
-		err := s.node.AddEntry(uint64(i+1)+req.GetPrevLogIndex(), entry)
+		entryIdx := uint64(i+1) + req.GetPrevLogIndex()
+		err = s.node.AddEntry(entryIdx, entry)
 		if err != nil {
-			// TODO: Return gRPC error.
-			return nil, err
+			return nil, status.Errorf(codes.Internal, "failed adding entry with index %d to log", entryIdx)
 		}
 	}
 
@@ -76,8 +83,7 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 	for i := s.node.LastApplied() + 1; i <= req.GetLeaderCommit(); i++ {
 		err := s.node.Commit(ctx, i)
 		if err != nil {
-			// TODO: Return gRPC error.
-			return nil, err
+			return nil, status.Errorf(codes.Internal, "failed commiting entry with index %d", i)
 		}
 	}
 
@@ -91,20 +97,40 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 }
 
 func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequest) (*raftgrpc.RequestVoteResponse, error) {
+	s.node.Lock()
+	defer s.node.Unlock()
+
+	select {
+	case <-ctx.Done():
+		// TODO: gRPC error response
+		return nil, ctx.Err()
+	default:
+	}
+
+	// Check if candidate's term is less than current term.
+	if req.GetTerm() < s.node.CurrentTerm() {
+		return &raftgrpc.RequestVoteResponse{
+			Term:        s.node.CurrentTerm(),
+			VoteGranted: false,
+		}, nil
+	}
+
+	// TODO: If votedFor is null or candidateID, and candidate's log is at least
+	// TODO: as up-to-date as receiver's log, grant vote (§5.2, §5.4)
+
 	// TODO
 	return nil, nil
 }
 
 var _ raftgrpc.RaftServer = (*Service)(nil)
 
-func mapRPCOperation(operation raftgrpc.AppendEntriesRequest_Entry_Operation) node.Operation {
+func mapRPCOperation(operation raftgrpc.AppendEntriesRequest_Entry_Operation) (node.Operation, error) {
 	switch operation {
 	case raftgrpc.AppendEntriesRequest_Entry_OPERATION_PUT:
-		return node.OperationPut
+		return node.OperationPut, nil
 	case raftgrpc.AppendEntriesRequest_Entry_OPERATION_DELETE:
-		return node.OperationDelete
+		return node.OperationDelete, nil
 	default:
-		// We should logically never arrive here.
-		panic("the operation is unsupported")
+		return 0, ErrUnsupportedOperation
 	}
 }

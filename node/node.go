@@ -16,6 +16,7 @@ const (
 
 var (
 	ErrEntryIndexOutOfRange = errors.New("the index of the entry is out of range")
+	ErrUnsupportedOperation = errors.New("the operation is unsupported")
 )
 
 type ID string
@@ -109,8 +110,7 @@ func (n *Node) Commit(ctx context.Context, index uint64) error {
 			return err
 		}
 	default:
-		// We should logically never arrive here.
-		panic("the operation is unsupported")
+		return ErrUnsupportedOperation
 	}
 
 	n.lastApplied = index
