@@ -30,6 +30,12 @@ func (s *Service) Get(ctx context.Context, req *douggrpc.GetRequest) (*douggrpc.
 		return nil, s.redirectToLeaderError()
 	}
 
+	// Check if last committed entry is from current term.
+	if s.node.LastCommittedLogTerm() != s.node.CurrentTerm() {
+		// The no-op AppendEntries RPC has not yet been committed post leader election.
+		return nil, status.Error(codes.FailedPrecondition, "stale entries still exist post leader election")
+	}
+
 	// Read value from DB state.
 	v, err := s.node.DBState().Get(ctx, req.GetKey())
 	if err != nil {

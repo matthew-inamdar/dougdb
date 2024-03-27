@@ -175,3 +175,11 @@ func (n *Node) LastLogTerm() uint64 {
 func (n *Node) LastLogIndex() uint64 {
 	return uint64(len(n.log)) - 1
 }
+
+func (n *Node) LastCommittedLogTerm() uint64 {
+	if len(n.log) == 0 {
+		return 0
+	}
+
+	return n.log[n.commitIndex].Term
+}
