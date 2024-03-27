@@ -26,8 +26,7 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 
 	select {
 	case <-ctx.Done():
-		// TODO: gRPC error response
-		return nil, ctx.Err()
+		return nil, status.Error(codes.Canceled, "client canceled request")
 	default:
 	}
 
@@ -87,9 +86,9 @@ func (s *Service) AppendEntries(ctx context.Context, req *raftgrpc.AppendEntries
 
 	// Apply committed entries to the state machine.
 	for i := s.node.LastApplied() + 1; i <= req.GetLeaderCommit(); i++ {
-		err := s.node.Commit(ctx, i)
+		err := s.node.Apply(ctx, i)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed commiting entry with index %d", i)
+			return nil, status.Errorf(codes.Internal, "failed applying entry with index %d", i)
 		}
 	}
 
@@ -108,8 +107,7 @@ func (s *Service) RequestVote(ctx context.Context, req *raftgrpc.RequestVoteRequ
 
 	select {
 	case <-ctx.Done():
-		// TODO: gRPC error response
-		return nil, ctx.Err()
+		return nil, status.Error(codes.Canceled, "client canceled request")
 	default:
 	}
 

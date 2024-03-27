@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 )
 
 type Role int
@@ -23,44 +24,75 @@ type ID string
 
 const NilID ID = ""
 
+type config struct {
+	// The ID of this node.
+	id ID
+	// The IDs of the other nodes in the cluster. This must not contain the ID
+	// of this node.
+	clusterIDs []ID
+	// The timeout to start an election.
+	electionTimeout time.Duration
+}
+
 type persistentState struct {
-	role        Role
+	// The current term of this node.
 	currentTerm uint64
-	votedFor    ID
-	log         []Entry
+	// The ID of the node that this node has voted for in the current term.
+	votedFor ID
+	// The log of entries this node has.
+	log []Entry
 }
 
 type volatileState struct {
+	// The index of the highest known entry to be committed within the cluster,
+	// according to this node's knowledge.
 	commitIndex uint64
+	// The index of the highest committed entry in this node's log.
 	lastApplied uint64
+
+	// The ID of the leader node in the cluster. This may be empty if this node
+	// is not aware which node is leader.
+	leaderID ID
+	// The current role of this node.
+	role Role
 }
 
 type volatileLeaderState struct {
-	nextIndex  map[ID]uint64
+	// For each other node in the cluster, the index of the next entry in the
+	// log to attempt to append entries from.
+	nextIndex map[ID]uint64
+	// For each other node in the cluster, the index of the highest known log
+	// entry to have been replicated.
 	matchIndex map[ID]uint64
 }
 
 type Node struct {
-	id       ID
-	leaderID ID
+	config
 
-	// Raft State.
 	sync.RWMutex
 	persistentState
 	volatileState
 	volatileLeaderState
 
-	// DB State.
 	dbState State
 }
 
-func NewNode(id ID) *Node {
+func NewNode(id ID, clusterIDs []ID, electionTimeout time.Duration) *Node {
+	nextIndex, matchIndex := make(map[ID]uint64), make(map[ID]uint64)
+	for _, id := range clusterIDs {
+		nextIndex[id], matchIndex[id] = 0, 0
+	}
+
 	return &Node{
-		id:      id,
+		config: config{
+			id:              id,
+			clusterIDs:      clusterIDs,
+			electionTimeout: electionTimeout,
+		},
 		RWMutex: sync.RWMutex{},
 		volatileLeaderState: volatileLeaderState{
-			nextIndex:  make(map[ID]uint64),
-			matchIndex: make(map[ID]uint64),
+			nextIndex:  nextIndex,
+			matchIndex: matchIndex,
 		},
 		dbState: newMemoryState(),
 	}
@@ -75,7 +107,7 @@ func (n *Node) SetLeaderID(leaderID ID) {
 }
 
 func (n *Node) CurrentTerm() uint64 {
-	return n.persistentState.currentTerm
+	return n.currentTerm
 }
 
 func (n *Node) HasEntry(index, term uint64) bool {
@@ -111,7 +143,7 @@ func (n *Node) LastApplied() uint64 {
 	return n.lastApplied
 }
 
-func (n *Node) Commit(ctx context.Context, index uint64) error {
+func (n *Node) Apply(ctx context.Context, index uint64) error {
 	if index >= uint64(len(n.log)) {
 		return ErrEntryIndexOutOfRange
 	}
@@ -154,6 +186,18 @@ func (n *Node) Role() Role {
 
 func (n *Node) SetRole(role Role) {
 	n.role = role
+
+	if role != RoleLeader {
+		return
+	}
+
+	// Reset volatile leader state when promoted to leader.
+	for id, _ := range n.nextIndex {
+		n.nextIndex[id] = n.LastLogIndex() + 1
+	}
+	for id, _ := range n.matchIndex {
+		n.matchIndex[id] = 0
+	}
 }
 
 func (n *Node) VotedFor() ID {

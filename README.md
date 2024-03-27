@@ -38,4 +38,6 @@ This is not intended for production use, but as a fun exercise to learn and expe
 * We'll use 150-300ms as the election timeout random bounds
 * When a candidate becomes leader, it initialises all `nextIndex` values to the
 index after the latest entry in the new leader's log
-* 
+* Commits currently block until a majority has accepted - I should instead make
+use of a buffer to continue accepting requests and have a single process issue
+AppendEntries RPCs
